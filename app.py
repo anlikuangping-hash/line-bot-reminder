@@ -45,5 +45,29 @@ def push_message():
 
     return "PUSH OK", 200
 
+# 自分（または送りたい相手）の userId を環境変数から読む
+LINE_USER_ID = os.getenv("LINE_USER_ID")
+
+@app.route("/job", methods=["GET", "POST"])
+def job():
+    """
+    GitHub Actions などから叩いて定期メッセージを送る用のエンドポイント
+    GET：ブラウザからテスト用
+    POST：本番（GitHub Actions から）
+    """
+    if LINE_USER_ID is None:
+        # userId が設定されていないとエラーになるので保険
+        return "LINE_USER_ID is not set", 500
+
+    try:
+        line_bot_api.push_message(
+            LINE_USER_ID,
+            TextSendMessage(text="⏰ 定期テストメッセージです")
+        )
+        return "OK", 200
+    except Exception as e:
+        # 何かエラーが起きたときに原因がわかるようにする
+        return str(e), 500
+
 if __name__ == "__main__":
     app.run()
