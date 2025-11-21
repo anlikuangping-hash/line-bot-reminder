@@ -31,15 +31,19 @@ def handle_message(event):
         TextSendMessage(text="Hello! Your bot is running on Render 🚀")
     )
 
-@app.route("/push", methods=['POST'])
+@app.route("/push", methods=["GET", "POST"])
 def push_message():
-    user_id = os.getenv("LINE_USER_ID")
-    message = "定期メッセージのテストです"
-    line_bot_api.push_message(
-        user_id,
-        TextSendMessage(text=message)
-    )
-    return "OK"
+    # LINE_USER_ID が設定されているかチェック
+    if USER_ID is None:
+        return "LINE_USER_ID is not set", 500
+
+    # 送るメッセージ（とりあえず固定文）
+    message = TextSendMessage(text="⏰ 定期メッセージです！")
+
+    # プッシュメッセージ送信
+    line_bot_api.push_message(USER_ID, message)
+
+    return "PUSH OK", 200
 
 if __name__ == "__main__":
     app.run()
