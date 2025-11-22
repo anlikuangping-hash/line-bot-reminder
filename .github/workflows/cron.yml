@@ -1,33 +1,15 @@
-name: LINE reminder every 20 minutes
+name: Scheduled LINE Push
 
 on:
   schedule:
-    - cron: "*/20 * * * *"   # 20分おき（UTC基準）
-  workflow_dispatch:          # 手動実行ボタンも有効にする（テスト用）
+    - cron: "*/20 * * * *"   # 20分ごと
+  workflow_dispatch:        # 手動実行ボタンも出る
 
 jobs:
-  send-reminder:
+  send_line_message:
     runs-on: ubuntu-latest
 
-    env:
-      LINE_CHANNEL_ACCESS_TOKEN: ${{ secrets.LINE_CHANNEL_ACCESS_TOKEN }}
-      LINE_USER_ID: ${{ secrets.LINE_USER_ID }}
-
     steps:
-      - name: Send LINE reminder
+      - name: Call Render job endpoint
         run: |
-          curl -X POST https://api.line.me/v2/bot/message/push \
-            -H "Content-Type: application/json" \
-            -H "Authorization: Bearer ${LINE_CHANNEL_ACCESS_TOKEN}" \
-            -d "$(cat << 'EOF'
-          {
-            "to": "'"${LINE_USER_ID}"'",
-            "messages":[
-              {
-                "type":"text",
-                "text":"20分おきのテストリマインダーです。"
-              }
-            ]
-          }
-          EOF
-          )"
+          curl -X POST https://line-bot-reminder-bpaa.onrender.com/job
