@@ -6,24 +6,41 @@ import os
 
 app = Flask(__name__)
 
-# 環境変数から読み込み
+# ===== 環境変数の読み込み =====
 CHANNEL_ACCESS_TOKEN = os.getenv("LINE_CHANNEL_ACCESS_TOKEN")
 CHANNEL_SECRET = os.getenv("LINE_CHANNEL_SECRET")
+LINE_USER_ID = os.getenv("LINE_USER_ID")  # プッシュ先の userId
+
+# 念のためチェック（デプロイ時にすぐ気づけるように）
+if CHANNEL_ACCESS_TOKEN is None or CHANNEL_SECRET is None:
+    raise ValueError("環境変数 LINE_CHANNEL_ACCESS_TOKEN / LINE_CHANNEL_SECRET が設定されていません。")
 
 line_bot_api = LineBotApi(CHANNEL_ACCESS_TOKEN)
 handler = WebhookHandler(CHANNEL_SECRET)
 
+# ===== 動作確認用のトップページ =====
+@app.route("/", methods=["GET"])
+def index():
+    return "LINE bot is running on Render.", 200
+
+# ===== Webhook（ユーザーからのメッセージ受信） =====
 @app.route("/callback", methods=['POST'])
 def callback():
+    # get X-Line-Signature header value
     signature = request.headers['X-Line-Signature']
+
+    # get request body as text
     body = request.get_data(as_text=True)
+
+    # handle webhook body
     try:
         handler.handle(body, signature)
     except InvalidSignatureError:
         abort(400)
+
     return 'OK'
 
-# 「こんにちは」と返すだけの Bot
+# ===== 「こんにちは」と返すだけの Bot =====
 @handler.add(MessageEvent, message=TextMessage)
 def handle_message(event):
     line_bot_api.reply_message(
@@ -31,32 +48,15 @@ def handle_message(event):
         TextSendMessage(text="Hello! Your bot is running on Render 🚀")
     )
 
-@app.route("/push", methods=["GET", "POST"])
-def push_message():
-    # LINE_USER_ID が設定されているかチェック
-    if USER_ID is None:
-        return "LINE_USER_ID is not set", 500
-
-    # 送るメッセージ（とりあえず固定文）
-    message = TextSendMessage(text="⏰ 定期メッセージです！")
-
-    # プッシュメッセージ送信
-    line_bot_api.push_message(USER_ID, message)
-
-    return "PUSH OK", 200
-
-# 自分（または送りたい相手）の userId を環境変数から読む
-LINE_USER_ID = os.getenv("LINE_USER_ID")
-
+# ===== GitHub Actions から叩く定期メッセージ用のエンドポイント =====
 @app.route("/job", methods=["GET", "POST"])
 def job():
     """
     GitHub Actions などから叩いて定期メッセージを送る用のエンドポイント
-    GET：ブラウザからテスト用
-    POST：本番（GitHub Actions から）
+    GET：ブラウザからのテスト
+    POST：GitHub Actions などからの実行
     """
     if LINE_USER_ID is None:
-        # userId が設定されていないとエラーになるので保険
         return "LINE_USER_ID is not set", 500
 
     try:
@@ -66,8 +66,8 @@ def job():
         )
         return "OK", 200
     except Exception as e:
-        # 何かエラーが起きたときに原因がわかるようにする
         return str(e), 500
 
 if __name__ == "__main__":
-    app.run()
+    # ローカルで動かすとき用（Renderでは gunicorn が使うのでほぼ通らない）
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
