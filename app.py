@@ -39,6 +39,10 @@ def callback():
 # ====== 返信テスト ======
 @handler.add(MessageEvent, message=TextMessage)
 def handle_message(event):
+
+        # ★ ここ追加：ユーザーIDをログ出力
+    print("USER ID:", event.source.user_id)
+    
     line_bot_api.reply_message(
         event.reply_token,
         TextSendMessage(text="Hello! Your bot is running on Render 🚀")
